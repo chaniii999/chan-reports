@@ -31,37 +31,20 @@
 
 `.claude` 폴더 자체는 이미 있다(설정·플러그인이 거기 산다). `skills` 하위 폴더만 없을 수 있는데, 아래 명령이 만들어 준다.
 
-### 방법 ① 클론 한 줄 — 이게 제일 쉽다
-
-**홈 `.claude\skills\` 아래에 통째로 클론하면 끝이다.** 이 저장소는 플러그인 형태라
-`~/.claude/skills/<이름>/` 에 놓이면 `<이름>@skills-dir` 로 **자동 로드**된다.
+### 방법 ① 클론 + 폴더 두 개 복사 — **어느 환경에서나 된다. 이걸 쓰면 된다**
 
 ```powershell
 # Windows (PowerShell)
-git clone https://github.com/chaniii999/chan-reports "$HOME\.claude\skills\chan-reports"
+git clone https://github.com/chaniii999/chan-reports "$HOME\chan-reports"
+New-Item -ItemType Directory "$HOME\.claude\skills" -Force
+Copy-Item "$HOME\chan-reports\skills\*" "$HOME\.claude\skills\" -Recurse -Force
 ```
 
 ```bash
 # macOS / Linux
-git clone https://github.com/chaniii999/chan-reports ~/.claude/skills/chan-reports
-```
-
-**업데이트도 한 줄이다.**
-
-```powershell
-git -C "$HOME\.claude\skills\chan-reports" pull
-```
-
-⚠️ 클론 위치가 `~/.claude/skills/chan-reports` 여야 한다. 다른 데 클론해서 `skills\` 안쪽만
-꺼내 놓는 방식도 되지만(방법 ②), 그러면 업데이트를 매번 손으로 해야 한다.
-
-### 방법 ② 폴더 복사 — git 없이
-
-git 이 없으면 저장소를 zip 으로 받아 `skills` **안에 있는 폴더 두 개를** 홈 `.claude\skills\` 에 넣는다.
-
-```powershell
-New-Item -ItemType Directory "$HOME\.claude\skills" -Force
-Copy-Item '<받은 경로>\skills\*' "$HOME\.claude\skills\" -Recurse
+git clone https://github.com/chaniii999/chan-reports ~/chan-reports
+mkdir -p ~/.claude/skills
+cp -r ~/chan-reports/skills/* ~/.claude/skills/
 ```
 
 넣고 나면 이렇게 돼 있어야 한다:
@@ -72,18 +55,47 @@ C:\Users\<내계정>\.claude\skills\
   weekly-report\   SKILL.md · frame.html · CHANGELOG.md
 ```
 
-⚠️ **두 폴더를 같이** 넣는다 — 주간 보고서가 일일 폴더의 `publish.ps1` 을 쓴다.
-⚠️ `skills` **안의 폴더들**을 넣는 거지 `skills` 폴더째로 넣는 게 아니다.
+**업데이트**는 받아서 다시 복사한다(두 줄).
 
-### 방법 ③ 마켓플레이스 — 터미널 CLI 를 쓸 때
+```powershell
+git -C "$HOME\chan-reports" pull
+Copy-Item "$HOME\chan-reports\skills\*" "$HOME\.claude\skills\" -Recurse -Force
+```
+
+⚠️ `skills` **안의 폴더 두 개**를 넣는 것이다. `skills` 폴더째로 넣으면(`skills\skills\…`) 안 뜬다.
+⚠️ **두 폴더를 같이** 넣는다 — 주간 보고서가 일일 폴더의 `publish.ps1` 을 쓴다.
+⚠️ git 이 없으면 저장소를 zip 으로 받아 같은 두 폴더를 복사해도 된다.
+⚠️ **PowerShell 에서는 `~/` 대신 `$HOME` 을 쓴다.** PowerShell 은 자기 cmdlet 에는 `~` 를 풀어 주지만
+`git` 같은 외부 프로그램에 넘길 때는 **글자 그대로** 넘긴다 — `git clone <url> ~/chan-reports` 를
+PowerShell 에서 치면 현재 폴더 안에 `~` 라는 이름의 폴더가 생긴다(실측). 위 PowerShell 블록처럼
+`"$HOME\chan-reports"` 로 쓰면 된다.
+
+### 방법 ② 플러그인으로 — **터미널 CLI 에서만 된다**
+
+이 저장소는 플러그인 형태이기도 해서, `~/.claude/skills/<이름>/` 에 통째로 놓으면
+`<이름>@skills-dir` 로 자동 로드된다. 복사 단계가 없어 편하다.
+
+```bash
+git clone https://github.com/chaniii999/chan-reports ~/.claude/skills/chan-reports
+# 업데이트: git -C ~/.claude/skills/chan-reports pull
+```
+
+마켓플레이스로 붙일 수도 있다.
 
 ```bash
 claude plugin marketplace add https://github.com/chaniii999/chan-reports
 claude plugin install chan-reports@chan-reports
 ```
 
-⚠️ **`/plugin` 슬래시 명령은 환경에 따라 없다** (예: VSCode 확장에서는 `/plugin isn't available in this environment`).
-그때는 방법 ①을 쓰면 된다 — 설치 명령이 아예 필요 없다.
+> ⚠️ **이 방법은 표면(surface)에 따라 안 먹는다.** 실측(2026-09-01):
+>
+> | | 터미널 CLI | VSCode 확장 |
+> | --- | --- | --- |
+> | `~/.claude/skills/<이름>/SKILL.md` (방법 ①) | 읽는다 | **읽는다** |
+> | `~/.claude/skills/<이름>/` + `.claude-plugin/` (방법 ②) | 읽는다 | **안 읽는다** |
+> | `/plugin` 슬래시 명령 | — | **없다** (`/plugin isn't available in this environment`) |
+>
+> 확장 버전이 낮아서가 아니다(확장 `2.1.251` > CLI `2.1.186`). 그래서 **방법 ①이 기본**이다.
 
 ### 됐는지 확인
 
@@ -93,21 +105,31 @@ claude plugin install chan-reports@chan-reports
 
 스킬이 잡히면 **이름과 직함을 묻는 것**이 첫 반응이다. 그게 나오면 성공이다.
 
-터미널에서 바로 확인할 수도 있다:
+⚠️ **`/` 를 쳐서 목록에 나오는지로 판단하지 말 것.** 환경에 따라 `/` 메뉴가 스킬을 아예
+나열하지 않는다(VSCode 확장이 그렇다). 스킬은 **말로 부르는 게 정상 경로**다 —
+"일일보고서 써줘" 로 잡히면 정상이다.
+
+터미널에서는 이렇게도 확인된다:
 
 ```bash
-claude plugin list      # chan-reports@skills-dir  Status: loaded  이면 성공
+claude plugin list      # 방법 ② 로 넣었을 때 chan-reports@skills-dir  Status: loaded
 ```
 
 | 안 뜬다면 | 확인 |
 | --- | --- |
-| 목록에 아예 없다 | **새 세션**을 열었는지 / 클론 위치가 `...\.claude\skills\chan-reports` 인지 |
-| `skills\skills\` 로 들어갔다 | 방법 ②라면 `skills` **안의 두 폴더**만 옮긴다 |
+| `/` 목록에 없다 | **그게 정상일 수 있다** — 위 경고 참조. "일일보고서 써줘" 로 부른다 |
+| 말로 불러도 안 잡힌다 | **새 세션**을 열었는지 / `~/.claude/skills/daily-report/SKILL.md` 가 실제로 있는지 |
+| `skills\skills\` 로 들어갔다 | `skills` **안의 두 폴더**만 옮긴다 |
+| 방법 ②로 넣었는데 안 된다 | 그 표면이 skills-dir 플러그인을 안 읽는 것 — **방법 ①로 바꾼다** |
+| 이름이 두 번 뜬다 | 방법 ①과 ②를 겹쳐 넣은 것 — 하나만 남긴다 |
 | 프로젝트에서만 뜬다 | 프로젝트 `.claude\skills\` 에 넣은 것 — 홈 쪽으로 옮긴다 |
-| 이름이 두 번 뜬다 | 프로젝트와 홈 양쪽에 있다 — 프로젝트 쪽을 지운다 |
 
-세 방법 다 **모든 프로젝트에서** 동작한다. 상시 컨텍스트 비용은 **약 390 토큰**이고,
+두 방법 다 **모든 프로젝트에서** 동작한다. 상시 컨텍스트 비용은 **약 390 토큰**이고,
 스킬 본문은 실제로 부를 때만 읽힌다(`claude plugin details` 로 확인 가능).
+
+⚠️ **방법 ①과 ②를 겹쳐 넣지 않는다.** 둘 다 넣으면 지원하는 표면에서 스킬이 두 번 뜬다.
+방법 ②를 걷어낼 때 `.git` 폴더의 pack 파일이 읽기전용이라 `Remove-Item -Recurse` 가
+권한 오류로 실패한다 — Windows 에서는 `cmd /c rmdir /s /q "<경로>"` 를 쓴다.
 
 ## 처음 쓸 때 — 아무것도 미리 안 해도 된다
 
