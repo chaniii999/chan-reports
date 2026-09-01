@@ -1,0 +1,415 @@
+<!--
+  주간 정기회의 보고서 프레임 (재사용 골격) — weekly-report 스킬의 산출 골격. 작성 규칙은 SKILL.md.
+  프레임 버전: v2.2.0  (변경 시 SKILL.md §버전 관리대로 bump + 세 곳 동기화 · 이력은 CHANGELOG.md)
+  성격: 정기회의 5분 발표용. 회의일 기준 직전 7일(일일 보고서)을 참고해 메인 task 를 큰 카테고리
+        3~4개로 묶어 핵심만. 각 카테고리는 데모뷰(가능하면) 제공.
+  사용법: 이 파일 복사 → {{...}} 채우기 → 카테고리 카드 3~4개(기본 3, 도메인 축이면 w4 추가) → 각 카드 데모뷰 채우기 → Artifact 발행.
+          CSS/스크립트는 손대지 않는다(프레임 고정).
+  제목 규칙: "{{MONTH}}월 {{WEEKNUM}}주차 주간 정기회의 보고서"
+    - 회의일 D = 보고 주의 회의 요일.  기간 = (D−7) ~ (D−1).
+    - MONTH = D의 월,  WEEKNUM = D가 그 달의 몇째 주 = ceil(D.일 / 7)  (1~7일=1, 8~14=2 …).
+  작성자: {{AUTHOR}} — report-config.json 의 author + authorTitle 을 채운다(하드코딩 금지).
+  데모뷰: 카테고리 1건당 .demo 1개. ① 캡처/GIF → <img src="data:image/...;base64,…">  ②인라인 SVG 스키매틱
+          ③ 둘 다 불가 → .demo.placeholder 로 '데모 준비중' 캡션. (외부 URL 금지 — CSP, data-URI 만)
+  TAG class: bug | fix | feat | chore | docs.   넘버링: 두 자리(01 02 03). 목차·본문 1:1.
+-->
+<title>주간 정기회의 보고서 — {{MONTH}}월 {{WEEKNUM}}주차</title>
+<style>
+  :root {
+    /* 정기회의용 고대비 팔레트(일일과 분리) — 선명한 블루 accent + 진한 텍스트/테두리 + 또렷한 카드 분리 */
+    --ground: #e9eef5; --panel: #ffffff;
+    --ink: #0d1520; --ink-soft: #36424f; --ink-faint: #65707c;
+    --line: #c6d1de; --line-soft: #d8e0ea; --hover-bg: #dde6f1;
+    --accent: #0a5fc2; --accent-soft: #d6e6fb; --accent-border: #99c2ef;
+    --bug: #cc2b1f; --bug-bg: #fbdedb; --bug-bd: #ef9f97;
+    --feat: #14823f; --feat-bg: #d4eedd; --feat-bd: #8ed2a9;
+    --fix: #135fc4; --fix-bg: #d8e7fb; --fix-bd: #9cc3f0;
+    --chore: #475463; --chore-bg: #e3e8ef; --chore-bd: #c2cdda;
+    --docs: #0c757f; --docs-bg: #cfeced; --docs-bd: #8ed2d6;
+    --warn: #a9651a; --good: #14823f;
+    --cause-bg: #e8edf3; --cause-bd: #d2dae4;
+    --result-ink: #103456; --result-ink-strong: #082541;
+    --verdict-bg: var(--feat-bg); --verdict-bd: var(--feat-bd);
+    --verdict-ink: #0f5a30; --verdict-ink-strong: #084021;
+    --hero-from: #1666cf; --hero-to: #07274f; --hero-ink: #f6faff; --hero-faint: rgba(255,255,255,0.78);
+    --hero-glass: rgba(255,255,255,0.15); --hero-glass-bd: rgba(255,255,255,0.32); --hero-ghost: rgba(255,255,255,0.15);
+    --shadow: 0 12px 30px rgba(10,38,74,0.16);
+    --card-shadow: 0 1px 2px rgba(13,28,52,0.06), 0 5px 16px rgba(13,28,52,0.05);
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace;
+    --sans: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #0b0f15; --panel: #18202b;
+      --ink: #f2f6fb; --ink-soft: #b8c3d0; --ink-faint: #7e8a98;
+      --line: #34404d; --line-soft: #232c37; --hover-bg: #232f3c;
+      --accent: #57a6f5; --accent-soft: #133255; --accent-border: #335a82;
+      --bug: #f4948b; --bug-bg: #38211e; --bug-bd: #563531;
+      --feat: #6ddb9d; --feat-bg: #15291f; --feat-bd: #2f4d39;
+      --fix: #6fb5f6; --fix-bg: #122a3f; --fix-bd: #2d4c6b;
+      --chore: #9fabb8; --chore-bg: #222b35; --chore-bd: #38434f;
+      --docs: #5cc6cd; --docs-bg: #102b2e; --docs-bd: #294e52;
+      --warn: #e3ad60; --good: #6ddb9d;
+      --cause-bg: #1e2731; --cause-bd: #303b47;
+      --result-ink: #d2e6fb; --result-ink-strong: #ecf4fd;
+      --verdict-bg: #15291f; --verdict-bd: #2f4d39;
+      --verdict-ink: #9be0b8; --verdict-ink-strong: #c8f1d8;
+      --hero-from: #1f5da0; --hero-to: #081a2e; --hero-ink: #f1f6fc; --hero-faint: rgba(241,246,252,0.7);
+      --hero-glass: rgba(255,255,255,0.09); --hero-glass-bd: rgba(255,255,255,0.18); --hero-ghost: rgba(255,255,255,0.07);
+      --shadow: 0 14px 36px rgba(0,0,0,0.55);
+      --card-shadow: 0 1px 2px rgba(0,0,0,0.4), 0 6px 18px rgba(0,0,0,0.3);
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body { margin: 0; background: var(--ground); color: var(--ink); font-family: var(--sans); line-height: 1.65; font-size: 17px; -webkit-font-smoothing: antialiased; word-break: keep-all; overflow-wrap: break-word; }
+  .wrap { max-width: 800px; margin: 0 auto; padding: 44px 24px 96px; }
+  .work, .panel, .hero { scroll-margin-top: 70px; }
+
+  .js .reveal { opacity: 0; transform: translateY(18px); transition: opacity .55s cubic-bezier(.2,.7,.3,1), transform .55s cubic-bezier(.2,.7,.3,1); }
+  .js .reveal.in { opacity: 1; transform: none; }
+  @keyframes riseIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) {
+    .js .reveal { opacity: 1 !important; transform: none !important; transition: none !important; }
+    .hero *, .dash .stat { animation: none !important; }
+  }
+
+  .toc { position: fixed; top: 64px; left: max(16px, calc((100vw - 800px) / 2 - 228px)); width: 204px; max-height: calc(100vh - 128px); overflow-y: auto; }
+  .toc-label { font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-faint); font-weight: 600; margin: 0 0 12px; padding-left: 12px; }
+  .toc ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1px; border-left: 2px solid var(--line); }
+  .toc a { display: flex; align-items: baseline; gap: 7px; text-decoration: none; color: var(--ink-faint); font-size: 13.5px; line-height: 1.4; padding: 7px 11px; margin-left: -2px; border-left: 2px solid transparent; border-radius: 0 5px 5px 0; transition: color .15s, border-color .15s, background .15s; }
+  .toc a:hover { color: var(--ink); background: var(--hover-bg); }
+  .toc a.active { color: var(--accent); border-left-color: var(--accent); font-weight: 600; background: var(--accent-soft); }
+  .toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .toc .no { font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--ink-faint); flex: none; font-variant-numeric: tabular-nums; }
+  .toc a.active .no { color: var(--accent); }
+  .toc .tg { font-family: var(--mono); font-size: 9.5px; font-weight: 700; letter-spacing: .04em; flex: none; }
+  .toc .tg.bug { color: var(--bug); } .toc .tg.fix { color: var(--fix); } .toc .tg.feat { color: var(--feat); } .toc .tg.chore { color: var(--chore); } .toc .tg.docs { color: var(--docs); }
+  .toc .txt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  @media (max-width: 1260px) { .toc { display: none; } }
+
+  .topnav { display: none; }
+  @media (max-width: 1260px) {
+    .topnav { display: flex; gap: 8px; align-items: center; overflow-x: auto; position: sticky; top: 0; z-index: 20; padding: 10px 16px; background: color-mix(in srgb, var(--ground) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+    .topnav a { flex: none; text-decoration: none; font-family: var(--mono); font-size: 12px; color: var(--ink-soft); padding: 5px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); white-space: nowrap; }
+    .topnav a .n { color: var(--ink-faint); margin-right: 5px; }
+    .topnav a.active { color: #fff; background: var(--accent); border-color: var(--accent); }
+    .topnav a.active .n { color: rgba(255,255,255,.8); }
+  }
+
+  .wnum, .pnum { font-family: var(--mono); font-weight: 700; font-variant-numeric: tabular-nums; color: var(--accent); flex: none; }
+  .wnum { font-size: 14px; margin-top: 3px; }
+  .pnum { font-size: 15px; margin-right: 9px; }
+
+  /* ── 히어로 ── */
+  .hero { position: relative; overflow: hidden; border-radius: 18px; padding: 34px 34px 30px; color: var(--hero-ink); background: linear-gradient(135deg, var(--hero-from) 0%, var(--hero-to) 100%); box-shadow: var(--shadow); }
+  .hero > * { position: relative; z-index: 1; }
+  .hero-ghost { position: absolute; z-index: 0; right: 6px; top: 50%; transform: translateY(-50%); font-family: var(--mono); font-weight: 800; font-size: clamp(96px, 20vw, 190px); line-height: 0.8; color: var(--hero-ghost); letter-spacing: -0.04em; pointer-events: none; user-select: none; animation: riseIn .8s ease-out both; }
+  .hero .eyebrow { font-family: var(--mono); font-size: 12.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--hero-faint); font-weight: 600; margin: 0 0 12px; animation: riseIn .5s ease-out both; }
+  .hero h1 { font-size: clamp(26px, 4.6vw, 34px); line-height: 1.16; font-weight: 800; letter-spacing: -0.025em; margin: 0 0 18px; text-wrap: balance; max-width: 18ch; animation: riseIn .5s ease-out .05s both; }
+  .hero .meta { display: flex; flex-wrap: wrap; gap: 7px 26px; font-size: 14px; color: var(--hero-faint); border-top: 1px solid var(--hero-glass-bd); padding-top: 16px; animation: riseIn .5s ease-out .1s both; }
+  .hero .meta b { color: var(--hero-ink); font-weight: 600; }
+  .hero .meta .k { opacity: 0.8; margin-right: 6px; }
+  .dash { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 22px; }
+  .stat { background: var(--hero-glass); border: 1px solid var(--hero-glass-bd); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 3px; animation: riseIn .5s ease-out both; }
+  .dash .stat:nth-child(1) { animation-delay: .14s; } .dash .stat:nth-child(2) { animation-delay: .2s; } .dash .stat:nth-child(3) { animation-delay: .26s; }
+  .stat-num { font-family: var(--mono); font-size: 30px; font-weight: 700; line-height: 1; color: var(--hero-ink); font-variant-numeric: tabular-nums; }
+  .stat-lbl { font-size: 12.5px; color: var(--hero-faint); letter-spacing: 0.02em; }
+  @media (max-width: 560px) { .dash { grid-template-columns: 1fr; } .hero { padding: 26px 22px; } }
+
+  /* ── 회의 한 줄 요약 ── */
+  .lede { margin-top: 18px; font-size: 16px; color: var(--ink-soft); padding: 0 4px; }
+  .lede b { color: var(--ink); font-weight: 600; }
+
+  /* ── 메인 과제 카테고리 카드 (3~4개) ── */
+  .cards { margin-top: 22px; display: flex; flex-direction: column; gap: 18px; }
+  .work { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 24px 26px; box-shadow: var(--card-shadow); transition: transform .2s cubic-bezier(.2,.7,.3,1), box-shadow .2s, border-color .2s; }
+  .work:hover { transform: translateY(-3px); box-shadow: var(--shadow); border-color: var(--accent-border); }
+  @media (prefers-reduced-motion: reduce) { .work:hover { transform: none; } }
+  .work-head { display: flex; align-items: flex-start; gap: 13px; margin-bottom: 16px; }
+  .tag { flex: none; font-family: var(--mono); font-size: 11.5px; font-weight: 700; letter-spacing: 0.06em; padding: 4px 9px; border-radius: 6px; margin-top: 3px; }
+  .tag.bug { color: var(--bug); background: var(--bug-bg); } .tag.fix { color: var(--fix); background: var(--fix-bg); } .tag.feat { color: var(--feat); background: var(--feat-bg); } .tag.chore { color: var(--chore); background: var(--chore-bg); } .tag.docs { color: var(--docs); background: var(--docs-bg); }
+  .work-head h3 { margin: 0; font-size: 20px; font-weight: 700; line-height: 1.32; letter-spacing: -0.01em; text-wrap: balance; }
+  /* 진행 상태 배지 — "이정도 진행됨" 한눈에 (완료/진행중/예정) */
+  .status { flex: none; align-self: center; margin-left: auto; font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: 0.03em; border-radius: 999px; padding: 4px 11px; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+  .status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .status.done { color: var(--good); background: var(--feat-bg); border: 1px solid var(--feat-bd); }
+  .status.wip  { color: var(--accent); background: var(--accent-soft); border: 1px solid var(--accent-border); }
+  .status.todo { color: var(--ink-faint); background: var(--cause-bg); border: 1px solid var(--line); }
+  /* 진행률 바 */
+  .progress { display: flex; align-items: center; gap: 11px; margin: -2px 0 16px; }
+  .progress .bar { flex: 1; height: 8px; border-radius: 5px; background: var(--cause-bg); overflow: hidden; border: 1px solid var(--cause-bd); }
+  .progress .bar > i { display: block; height: 100%; width: var(--p, 0%); background: var(--accent); border-radius: 5px; transition: width .6s cubic-bezier(.2,.7,.3,1); }
+  .progress.done .bar > i { background: var(--good); }
+  .progress .pct { font-family: var(--mono); font-size: 12.5px; font-weight: 700; color: var(--ink-soft); font-variant-numeric: tabular-nums; min-width: 38px; text-align: right; }
+  .rows { display: flex; flex-direction: column; gap: 11px; }
+  .row { display: flex; flex-direction: column; gap: 5px; border-radius: 9px; padding: 13px 15px; }
+  .row .label { font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
+  .row .val { font-size: 16px; }
+  .row .val b { font-weight: 600; }
+  .row .val ul { margin: 0; padding-left: 1.15em; display: flex; flex-direction: column; gap: 5px; }
+  .row .val li { line-height: 1.5; }
+  .row.cause { background: var(--cause-bg); border: 1px solid var(--cause-bd); }
+  .row.cause .label { color: var(--ink-faint); }
+  .row.cause .val { color: var(--ink-soft); }
+  .row.cause .val b { color: var(--ink); }
+  .row.result { background: var(--accent-soft); border: 1px solid var(--accent-border); }
+  .row.result .label { color: var(--accent); }
+  .row.result .label .arrow { font-size: 13px; }
+  .row.result .val { color: var(--result-ink); font-size: 16.5px; }
+  .row.result .val b { color: var(--result-ink-strong); }
+
+  /* ── 데모뷰 (캡처/GIF data-URI 또는 인라인 SVG 스키매틱) ── */
+  .demo { margin-top: 16px; border: 1px solid var(--line); border-radius: 11px; overflow: hidden; background: var(--cause-bg); }
+  .demo-bar { display: flex; align-items: center; gap: 9px; padding: 9px 13px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  .demo-bar .dots { display: inline-flex; gap: 5px; }
+  .demo-bar .dots i { width: 9px; height: 9px; border-radius: 50%; background: var(--line); display: block; }
+  .demo-bar .demo-label { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-faint); font-weight: 600; }
+  .demo-stage { padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 150px; }
+  .demo-stage svg { max-width: 100%; height: auto; }
+  .demo-stage img { max-width: 100%; height: auto; border-radius: 6px; display: block; }
+  .demo.placeholder .demo-stage { color: var(--ink-faint); font-family: var(--mono); font-size: 13px; letter-spacing: 0.04em; }
+  .demo-cap { padding: 0 14px 13px; font-size: 13px; color: var(--ink-faint); }
+  /* SVG 스키매틱 공용 토큰 클래스(인라인 SVG 에서 class 로 참조) */
+  .d-block { fill: var(--panel); stroke: var(--accent-border); stroke-width: 1.5; }
+  .d-port { fill: var(--accent); }
+  .d-edge { stroke: var(--accent); stroke-width: 2; fill: none; }
+  .d-edge-2 { stroke: var(--fix); stroke-width: 2; fill: none; }
+  .d-sel { fill: color-mix(in srgb, var(--accent) 12%, transparent); stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 5 4; }
+  .d-txt { fill: var(--ink-soft); font-family: var(--mono); font-size: 12px; }
+  .d-txt-s { fill: var(--ink-faint); font-family: var(--mono); font-size: 10.5px; }
+  .d-pill { fill: var(--accent-soft); stroke: var(--accent-border); stroke-width: 1; }
+  .d-pill-2 { fill: var(--fix-bg); stroke: var(--fix-bd); stroke-width: 1; }
+
+  .section-break { display: flex; align-items: center; gap: 14px; margin: 38px 0 4px; }
+  .section-break::before, .section-break::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+  .section-break span { font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-faint); font-weight: 600; }
+
+  .panel { margin-top: 16px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 26px 28px; box-shadow: var(--card-shadow); }
+  .panel h2 { font-size: 18px; font-weight: 700; margin: 0 0 18px; letter-spacing: -0.01em; display: flex; align-items: baseline; }
+  .checklist { display: flex; flex-direction: column; gap: 10px; }
+  .item { display: flex; align-items: baseline; gap: 11px; font-size: 15.5px; color: var(--ink-soft); }
+  .box { flex: none; width: 17px; height: 17px; border-radius: 4px; font-family: var(--mono); font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; align-self: center; line-height: 1; background: var(--cause-bg); color: var(--ink-faint); border: 1px solid var(--line); }
+  .item b { color: var(--ink); font-weight: 600; }
+
+  /* ── 일자별 타임라인 (세로 레일 + 점) ── */
+  .timeline .checks { position: relative; display: flex; flex-direction: column; gap: 12px; padding-left: 24px; }
+  .timeline .checks::before { content: ""; position: absolute; left: 6px; top: 6px; bottom: 6px; width: 2px; background: var(--line); border-radius: 2px; }
+  .check { position: relative; display: flex; align-items: baseline; gap: 10px; font-size: 15.5px; color: var(--ink-soft); }
+  .timeline .check::before { content: ""; position: absolute; left: -24px; top: 0.55em; width: 9px; height: 9px; border-radius: 50%; background: var(--accent); border: 2px solid var(--panel); box-shadow: 0 0 0 1px var(--accent-border); }
+  .timeline .check.empty::before { background: var(--line); box-shadow: none; }
+  .check .mark { flex: none; min-width: 42px; color: var(--accent); font-weight: 700; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .check.empty .mark { color: var(--ink-faint); }
+  .check b { color: var(--ink); font-weight: 600; }
+  .check a.files { font-family: var(--mono); font-size: 13px; color: var(--ink-faint); text-decoration: none; }
+  .check a.files:hover { color: var(--accent); }
+  .check.empty span { color: var(--ink-faint); }
+  .note { font-size: 13.5px; color: var(--ink-faint); margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--line); }
+  footer { margin-top: 40px; font-size: 13px; color: var(--ink-faint); font-family: var(--mono); text-align: center; }
+
+  @media print {
+    .toc, .topnav { display: none !important; }
+    html { scroll-behavior: auto; }
+    body { background: #fff; color: #000; font-size: 11.5pt; }
+    .wrap { max-width: none; padding: 0; }
+    .js .reveal { opacity: 1 !important; transform: none !important; }
+    .hero { background: #fff !important; color: #000 !important; box-shadow: none; border: 1px solid #c9c9c9; }
+    .hero .eyebrow, .hero h1, .hero .meta, .hero .meta b, .stat-num, .stat-lbl { color: #000 !important; }
+    .hero-ghost { display: none !important; }
+    .stat { background: #fff !important; border: 1px solid #c9c9c9 !important; }
+    .work, .panel { page-break-inside: avoid; box-shadow: none; border: 1px solid #c9c9c9; }
+    a { color: inherit; text-decoration: none; }
+  }
+</style>
+
+<!-- 목차: 메인 과제 카테고리 3~4개 + 타임라인 + 다음 단계. 번호는 본문과 1:1. 4번째(w4)는 선택. -->
+<nav class="toc" aria-label="목차">
+  <p class="toc-label">목차</p>
+  <ol>
+    <li><a href="#w1"><span class="no">01</span><span class="tg feat">{{TAG}}</span><span class="txt">{{카테고리 1}}</span></a></li>
+    <li><a href="#w2"><span class="no">02</span><span class="tg fix">{{TAG}}</span><span class="txt">{{카테고리 2}}</span></a></li>
+    <li><a href="#w3"><span class="no">03</span><span class="tg feat">{{TAG}}</span><span class="txt">{{카테고리 3}}</span></a></li>
+    <!-- 선택: 4번째 카테고리(도메인 중요 작업 등). 안 쓰면 이 줄 삭제 + 타임라인·다음단계 번호 04·05 로. -->
+    <li><a href="#w4"><span class="no">04</span><span class="tg docs">{{TAG}}</span><span class="txt">{{카테고리 4}}</span></a></li>
+    <li><a href="#timeline"><span class="no">{{NT}}</span><span class="txt">일자별 타임라인</span></a></li>
+    <!-- 다음 단계 · 논의 = 기본 미표시. 사용자가 지시할 때만 아래 줄·섹션 포함(번호 {{NN}}). -->
+    <li><a href="#next"><span class="no">{{NN}}</span><span class="txt">다음 단계 · 논의</span></a></li>
+  </ol>
+</nav>
+
+<nav class="topnav" aria-label="목차">
+  <a href="#w1"><span class="n">01</span>{{카테고리 1}}</a>
+  <a href="#w2"><span class="n">02</span>{{카테고리 2}}</a>
+  <a href="#w3"><span class="n">03</span>{{카테고리 3}}</a>
+  <a href="#w4"><span class="n">04</span>{{카테고리 4}}</a><!-- 선택(w4) -->
+  <a href="#timeline"><span class="n">{{NT}}</span>타임라인</a>
+  <a href="#next"><span class="n">{{NN}}</span>다음 단계</a><!-- 기본 미표시(사용자 지시 시에만) -->
+</nav>
+
+<div class="wrap">
+  <header class="hero">
+    <span class="hero-ghost" aria-hidden="true">{{GHOST}}</span>
+    <p class="eyebrow">주간 정기회의 · {{PROJECT}}</p>
+    <h1>{{MONTH}}월 {{WEEKNUM}}주차 주간 정기회의 보고서</h1>
+    <div class="meta">
+      <span><span class="k">회의일</span><b>{{MEETING_DATE}} (수)</b></span>
+      <span><span class="k">보고 기간</span><b>{{START}} (수) ~ {{END}} (화)</b></span>
+      <span><span class="k">작성자</span><b>{{AUTHOR}}</b></span>
+    </div>
+    <div class="dash">
+      <div class="stat"><span class="stat-num">{{n}}</span><span class="stat-lbl">메인 과제</span></div>
+      <div class="stat"><span class="stat-num">{{n}}</span><span class="stat-lbl">완료</span></div>
+      <div class="stat"><span class="stat-num">{{n}}</span><span class="stat-lbl">진행 중</span></div>
+    </div>
+  </header>
+
+  <!-- 회의 한 줄 요약(선택): 그 주를 한 문장으로. 불필요하면 줄 삭제. -->
+  <p class="lede">{{이번 주 한 마디 — 러프하게 어디까지 왔는지}}</p>
+
+  <!-- 메인 과제: 3~4개(기본 3; 도메인 중요 작업이 별도 축이면 w4 추가). 5분 발표용 — 항목당 ~1분.
+       각 카드 = 상태 배지(완료/진행중/예정) + 진행률 바 + 현황(어디까지) → 다음(다음 할 것) + 데모뷰(선택). 러프·간결. -->
+  <div class="cards">
+    <article class="work reveal" id="w1">
+      <div class="work-head">
+        <span class="wnum">01</span><span class="tag feat">{{TAG}}</span>
+        <h3>{{메인 과제 1 — 큰 카테고리}}</h3>
+        <span class="status wip">{{진행중}}</span><!-- class: done(완료)|wip(진행중)|todo(예정) -->
+      </div>
+      <div class="progress wip"><span class="bar"><i style="--p: {{%}}%"></i></span><span class="pct">{{%}}%</span></div>
+      <div class="rows">
+        <div class="row cause"><span class="label">현황</span><div class="val"><ul><li>{{어디까지 했는지 1}}</li><li>{{현황 2}}</li></ul></div></div>
+        <div class="row result"><span class="label"><span class="arrow">→</span> 다음</span><div class="val"><ul><li>{{다음에 할 것 1}}</li></ul></div></div>
+      </div>
+      <!-- 데모뷰: ①<img src="data:image/gif;base64,…"> 캡처/GIF  ②아래처럼 인라인 SVG  ③불가 시 .demo.placeholder -->
+      <div class="demo">
+        <div class="demo-bar"><span class="dots"><i></i><i></i><i></i></span><span class="demo-label">데모뷰</span></div>
+        <div class="demo-stage">
+          <svg viewBox="0 0 440 150" width="440" role="img" aria-label="{{데모 설명}}">
+            <!-- 예시 스키매틱: 블록/포트/엣지. 실제 기능에 맞게 도형 교체. -->
+            <rect class="d-block" x="40" y="48" width="120" height="54" rx="9"/>
+            <rect class="d-block" x="280" y="48" width="120" height="54" rx="9"/>
+            <rect class="d-port" x="156" y="68" width="9" height="14" rx="2"/>
+            <rect class="d-port" x="275" y="68" width="9" height="14" rx="2"/>
+            <line class="d-edge" x1="165" y1="75" x2="275" y2="75"/>
+            <text class="d-txt" x="100" y="79" text-anchor="middle">Block A</text>
+            <text class="d-txt" x="340" y="79" text-anchor="middle">Block B</text>
+          </svg>
+        </div>
+        <div class="demo-cap">{{데모 캡션 — 무엇을 보여주는지 한 줄}}</div>
+      </div>
+    </article>
+
+    <article class="work reveal" id="w2">
+      <div class="work-head">
+        <span class="wnum">02</span><span class="tag fix">{{TAG}}</span>
+        <h3>{{메인 과제 2 — 큰 카테고리}}</h3>
+        <span class="status wip">{{진행중}}</span><!-- class: done(완료)|wip(진행중)|todo(예정) -->
+      </div>
+      <div class="progress wip"><span class="bar"><i style="--p: {{%}}%"></i></span><span class="pct">{{%}}%</span></div>
+      <div class="rows">
+        <div class="row cause"><span class="label">현황</span><div class="val"><ul><li>{{어디까지 했는지 1}}</li><li>{{현황 2}}</li></ul></div></div>
+        <div class="row result"><span class="label"><span class="arrow">→</span> 다음</span><div class="val"><ul><li>{{다음에 할 것 1}}</li></ul></div></div>
+      </div>
+      <div class="demo placeholder">
+        <div class="demo-bar"><span class="dots"><i></i><i></i><i></i></span><span class="demo-label">데모뷰</span></div>
+        <div class="demo-stage">데모 준비중 — 캡처/GIF 또는 SVG 삽입</div>
+      </div>
+    </article>
+
+    <article class="work reveal" id="w3">
+      <div class="work-head">
+        <span class="wnum">03</span><span class="tag docs">{{TAG}}</span>
+        <h3>{{메인 과제 3 — 큰 카테고리}}</h3>
+        <span class="status wip">{{진행중}}</span><!-- class: done(완료)|wip(진행중)|todo(예정) -->
+      </div>
+      <div class="progress wip"><span class="bar"><i style="--p: {{%}}%"></i></span><span class="pct">{{%}}%</span></div>
+      <div class="rows">
+        <div class="row cause"><span class="label">현황</span><div class="val"><ul><li>{{어디까지 했는지 1}}</li><li>{{현황 2}}</li></ul></div></div>
+        <div class="row result"><span class="label"><span class="arrow">→</span> 다음</span><div class="val"><ul><li>{{다음에 할 것 1}}</li></ul></div></div>
+      </div>
+      <div class="demo placeholder">
+        <div class="demo-bar"><span class="dots"><i></i><i></i><i></i></span><span class="demo-label">데모뷰</span></div>
+        <div class="demo-stage">데모 준비중 — 캡처/GIF 또는 SVG 삽입</div>
+      </div>
+    </article>
+
+    <!-- 선택: 4번째 카테고리(예: 도메인 중요 작업). 3개면 이 article 통째 삭제. -->
+    <article class="work reveal" id="w4">
+      <div class="work-head">
+        <span class="wnum">04</span><span class="tag docs">{{TAG}}</span>
+        <h3>{{메인 과제 4 — 큰 카테고리}}</h3>
+        <span class="status wip">{{진행중}}</span><!-- class: done(완료)|wip(진행중)|todo(예정) -->
+      </div>
+      <div class="progress wip"><span class="bar"><i style="--p: {{%}}%"></i></span><span class="pct">{{%}}%</span></div>
+      <div class="rows">
+        <div class="row cause"><span class="label">현황</span><div class="val"><ul><li>{{어디까지 했는지 1}}</li><li>{{현황 2}}</li></ul></div></div>
+        <div class="row result"><span class="label"><span class="arrow">→</span> 다음</span><div class="val"><ul><li>{{다음에 할 것 1}}</li></ul></div></div>
+      </div>
+      <div class="demo placeholder">
+        <div class="demo-bar"><span class="dots"><i></i><i></i><i></i></span><span class="demo-label">데모뷰</span></div>
+        <div class="demo-stage">데모 준비중 — 캡처/GIF 또는 SVG 삽입</div>
+      </div>
+    </article>
+  </div>
+
+  <div class="section-break"><span>기록</span></div>
+
+  <!-- 일자별 타임라인: 보고 기간(회의일 −7 ~ −1)의 요일별 한 줄 + 그날 일일 보고서로 점프.
+       링크(필수): 각 일자의 ↗ 일일 보고서 URL 은 ~/.claude/chan-reports/artifact-urls.md 에서 조회해 자동으로 단다.
+                  인덱스에 없는 날(보고서 미발행)만 링크 생략. 인덱스가 비어 있어도 정상 — 링크만 없다.
+       표시 규칙: 평일은 작업 없어도 .check.empty(작업 없음, 점 흐리게)로 표시.
+                 토·일은 일일 보고서가 있을 때만 행 표시 — 없으면 행 자체를 생략(추가 안 함). → 행 5~7개. -->
+  <section class="panel timeline reveal" id="timeline">
+    <h2><span class="pnum">{{NT}}</span>일자별 타임라인</h2><!-- 카드 3개면 04, 4개면 05 -->
+    <div class="checks">
+      <div class="check"><span class="mark">{{MM/DD}}</span><span><b>{{요일}}</b> {{그날 한 일 한 줄}} <a class="files" href="{{일일 보고서 URL}}">↗ 일일 보고서</a></span></div>
+      <div class="check empty"><span class="mark">{{MM/DD}}</span><span><b>{{평일}}</b> 작업 없음</span></div>
+      <!-- … 평일(수·목·금·월·화) 행 + 토·일은 일일 보고서 있을 때만 행 추가 … -->
+    </div>
+  </section>
+
+  <!-- 다음 단계 · 논의 = 기본 미표시(OPT-IN). 사용자가 명시적으로 지시할 때만 이 section 포함.
+       미포함이 기본 → 그때는 이 section + 목차/점프바 #next 줄 삭제, 타임라인이 마지막 섹션.
+       포함 시 번호 {{NN}} = 카드수+2. 회의 액션 아이템 위주, 짧게. -->
+  <section class="panel reveal" id="next">
+    <h2><span class="pnum">{{NN}}</span>다음 단계 · 논의</h2><!-- 포함 시에만. 카드 3개+포함이면 05 -->
+    <div class="checklist">
+      <div class="item"><span class="box">□</span><span><b>{{다음 단계/논의 1}}</b> — {{메모}}</span></div>
+      <div class="item"><span class="box">□</span><span><b>{{다음 단계/논의 2}}</b> — {{메모}}</span></div>
+    </div>
+    <p class="note">{{이월·블로커·외부 대기 — 없으면 줄 삭제}}</p>
+  </section>
+
+  <footer>{{ORG}} · {{YEAR}} · 주간 정기회의 보고서 템플릿 v2.2.0</footer>
+</div>
+
+<script>
+  document.documentElement.classList.add('js');
+  (function () {
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var links = Array.prototype.slice.call(document.querySelectorAll('.toc a, .topnav a'));
+    if (links.length && 'IntersectionObserver' in window) {
+      var byId = {};
+      links.forEach(function (a) { var id = a.getAttribute('href').slice(1); (byId[id] = byId[id] || []).push(a); });
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          if (e.isIntersecting) {
+            links.forEach(function (l) { l.classList.remove('active'); });
+            (byId[e.target.id] || []).forEach(function (l) { l.classList.add('active'); });
+          }
+        });
+      }, { rootMargin: '-18% 0px -72% 0px', threshold: 0 });
+      Object.keys(byId).forEach(function (id) { var el = document.getElementById(id); if (el) io.observe(el); });
+    }
+    var reveals = Array.prototype.slice.call(document.querySelectorAll('.reveal'));
+    if (reduce || !('IntersectionObserver' in window)) {
+      reveals.forEach(function (el) { el.classList.add('in'); });
+    } else {
+      var ro = new IntersectionObserver(function (entries, obs) {
+        entries.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); obs.unobserve(e.target); } });
+      }, { rootMargin: '0px 0px -10% 0px', threshold: 0.08 });
+      reveals.forEach(function (el) { ro.observe(el); });
+    }
+  })();
+</script>

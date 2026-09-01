@@ -1,0 +1,10 @@
+{
+  "name": "chan-reports",
+  "version": "2.2.0",
+  "description": "카드형 일일·주간 보고서를 만들어 Artifact 로 발행하고 PDF 로 공유드라이브에 올린다. 첫 실행 때 이름·직함·드라이브 연결까지 안내한다.",
+  "author": {
+    "name": "박성찬",
+    "email": "psc070070@gmail.com",
+    "url": "https://github.com/chaniii999"
+  }
+}

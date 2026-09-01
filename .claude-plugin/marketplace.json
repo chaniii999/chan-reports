@@ -1,0 +1,18 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "chan-reports",
+  "description": "매일·매주 쓰는 업무 보고서를 카드형 HTML 로 만들어 발행·배포까지 한 번에.",
+  "owner": {
+    "name": "박성찬",
+    "email": "psc070070@gmail.com",
+    "url": "https://github.com/chaniii999"
+  },
+  "plugins": [
+    {
+      "name": "chan-reports",
+      "description": "일일·주간 보고서 작성 + Artifact 발행 + PDF 공유드라이브 업로드.",
+      "source": "./",
+      "category": "productivity"
+    }
+  ]
+}
