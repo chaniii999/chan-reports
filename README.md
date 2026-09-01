@@ -36,30 +36,37 @@
 ```powershell
 # Windows (PowerShell)
 git clone https://github.com/chaniii999/chan-reports "$HOME\chan-reports"
-New-Item -ItemType Directory "$HOME\.claude\skills" -Force
-Copy-Item "$HOME\chan-reports\skills\*" "$HOME\.claude\skills\" -Recurse -Force
+New-Item -ItemType Directory "$HOME\.claude\skills","$HOME\.claude\commands" -Force
+Copy-Item "$HOME\chan-reports\skills\*"   "$HOME\.claude\skills\"   -Recurse -Force
+Copy-Item "$HOME\chan-reports\commands\*" "$HOME\.claude\commands\" -Force
 ```
 
 ```bash
 # macOS / Linux
 git clone https://github.com/chaniii999/chan-reports ~/chan-reports
-mkdir -p ~/.claude/skills
-cp -r ~/chan-reports/skills/* ~/.claude/skills/
+mkdir -p ~/.claude/skills ~/.claude/commands
+cp -r ~/chan-reports/skills/*    ~/.claude/skills/
+cp    ~/chan-reports/commands/*  ~/.claude/commands/
 ```
 
 넣고 나면 이렇게 돼 있어야 한다:
 
 ```text
-C:\Users\<내계정>\.claude\skills\
-  daily-report\    SKILL.md · frame.html · publish.ps1 · CHANGELOG.md
-  weekly-report\   SKILL.md · frame.html · CHANGELOG.md
+C:\Users\<내계정>\.claude\
+  skills\daily-report\    SKILL.md · frame.html · publish.ps1 · CHANGELOG.md
+  skills\weekly-report\   SKILL.md · frame.html · CHANGELOG.md
+  commands\               daily-report.md · weekly-report.md
 ```
 
-**업데이트**는 받아서 다시 복사한다(두 줄).
+**`commands\` 는 `/` 메뉴에 뜨게 하는 용도**다. 안 넣어도 기능은 다 되지만(말로 부르면 된다),
+넣으면 `/daily-report` 로도 부를 수 있다 — 자세한 이유는 아래 §`/` 메뉴 참조.
+
+**업데이트**는 받아서 다시 복사한다.
 
 ```powershell
 git -C "$HOME\chan-reports" pull
-Copy-Item "$HOME\chan-reports\skills\*" "$HOME\.claude\skills\" -Recurse -Force
+Copy-Item "$HOME\chan-reports\skills\*"   "$HOME\.claude\skills\"   -Recurse -Force
+Copy-Item "$HOME\chan-reports\commands\*" "$HOME\.claude\commands\" -Force
 ```
 
 ⚠️ `skills` **안의 폴더 두 개**를 넣는 것이다. `skills` 폴더째로 넣으면(`skills\skills\…`) 안 뜬다.
@@ -105,9 +112,20 @@ claude plugin install chan-reports@chan-reports
 
 스킬이 잡히면 **이름과 직함을 묻는 것**이 첫 반응이다. 그게 나오면 성공이다.
 
-⚠️ **`/` 를 쳐서 목록에 나오는지로 판단하지 말 것.** 환경에 따라 `/` 메뉴가 스킬을 아예
-나열하지 않는다(VSCode 확장이 그렇다). 스킬은 **말로 부르는 게 정상 경로**다 —
-"일일보고서 써줘" 로 잡히면 정상이다.
+### `/` 메뉴 — 환경에 따라 다르다
+
+실측(2026-09-01):
+
+| | 터미널 CLI | VSCode 확장 |
+| --- | --- | --- |
+| `/` 에 **스킬**이 나열되나 | **된다** | **안 된다** |
+| `/` 에 **명령**(`commands/`)이 나열되나 | 된다 | **된다** |
+
+⚠️ 그래서 **`/` 목록에 없다는 것만으로 설치가 실패했다고 판단하지 말 것.** 스킬은 말로 부르는
+게 정상 경로다 — "일일보고서 써줘" 로 잡히면 정상이다.
+
+`/daily-report` 로 부르고 싶으면 위 설치의 **`commands\` 복사**를 같이 하면 된다. 그 파일들은
+스킬을 호출하는 **얇은 래퍼**이고, 실제 동작은 전부 스킬이 한다.
 
 터미널에서는 이렇게도 확인된다:
 
@@ -201,10 +219,15 @@ C:\Users\<내계정>\.claude\chan-reports\
 
 ```text
 chan-reports/
-  .claude-plugin/plugin.json · marketplace.json   ← 플러그인 설치용. 폴더 복사 방식이면 안 써도 된다
+  .claude-plugin/plugin.json · marketplace.json   ← 플러그인 설치용(방법 ②). 방법 ①이면 안 써도 된다
   skills/daily-report/    SKILL.md · frame.html · CHANGELOG.md · publish.ps1
   skills/weekly-report/   SKILL.md · frame.html · CHANGELOG.md
+  commands/               daily-report.md · weekly-report.md   ← / 메뉴용 얇은 래퍼
 ```
+
+`commands/` 는 스킬을 호출하는 두 줄짜리 래퍼다. **기능이 여기 있지는 않다** — VSCode 확장의
+`/` 메뉴가 스킬을 안 나열하고 명령만 나열하기 때문에 발견성 때문에 둔 것이다.
+ponytail 같은 플러그인이 처음부터 `/` 에 뜨는 이유도 같다(`commands/` 를 함께 싣는다).
 
 `publish.ps1` 은 **일일 스킬 폴더 안에** 둔다 — 그래야 스킬 폴더만 복사해도 PDF·업로드가 따라온다.
 주간은 `../daily-report/publish.ps1` 을 쓰고, 없으면 업로드만 건너뛴다.
