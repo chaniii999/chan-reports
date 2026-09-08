@@ -21,12 +21,30 @@ claude plugin marketplace add https://github.com/chaniii999/chan-reports
 claude plugin install chan-reports@chan-reports
 ```
 
-- **모든 프로젝트에서** 뜨고, **VSCode 확장에서도** 뜬다.
+⚠️ **`claude: command not found` 가 나오면** Claude Code 를 **VSCode 확장·데스크탑 앱으로만** 쓰는 상태다 — 그러면 `claude` 가 어느 터미널에도 없다(실측 2026-09-08). CLI 를 따로 깔 필요 없이 **확장이 번들한 바이너리**로 같은 설치를 한다. PowerShell 에 이 세 줄(경로를 직접 찾을 필요 없다):
+
+```powershell
+$claude = (Get-ChildItem "$HOME\.vscode\extensions\anthropic.claude-code-*\resources\native-binary\claude.exe" | Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName
+& $claude plugin marketplace add https://github.com/chaniii999/chan-reports
+& $claude plugin install chan-reports@chan-reports
+```
+
+CLI 를 아예 PATH 에 두고 싶으면 `npm i -g @anthropic-ai/claude-code`.
+
+- 설치는 **한 번만**. 그 뒤로는 **모든 프로젝트 · 모든 표면**(터미널 · VSCode 확장 · 데스크탑 앱)에서 그대로 쓰인다.
 - 설치 후 **새 세션**을 열어야 잡힌다. VSCode 확장에서 안 잡히면 `Ctrl+Shift+P → Developer: Reload Window`.
 - 확인: `claude plugin list` → `chan-reports@chan-reports  Status: ✔ enabled`
 - 업데이트: `claude plugin update chan-reports@chan-reports` / 제거: `... uninstall ...`
 
-> `/plugin` 슬래시 명령은 환경에 따라 없다(VSCode 확장에는 없다). **터미널에서 `claude plugin`** 을 쓰면 어느 환경이든 된다.
+> `/plugin` 슬래시 명령은 환경에 따라 없다(VSCode 확장에는 없었다 — 2026-09-01 실측). 위처럼 `claude plugin` 을 쓰면 어느 환경이든 된다.
+
+**전에 `~/.claude/skills/` 에 손으로 복사해 쓰던 사람**은 플러그인 설치 후 그 두 폴더를 지운다 — 안 지우면 같은 스킬이 두 번 등록된다.
+
+```powershell
+Remove-Item -Recurse -Force "$HOME\.claude\skills\daily-report","$HOME\.claude\skills\weekly-report"
+```
+
+내 보고서·설정은 `~/.claude/chan-reports/` 에 있어 **영향받지 않는다.**
 
 ## 처음 쓸 때
 
@@ -55,16 +73,17 @@ claude plugin install chan-reports@chan-reports
 - 보고서 **작성과 Artifact 발행은 어디서나** 된다(Windows · macOS · Linux).
 - **PDF 변환과 드라이브 업로드만 Windows 전용**이다 — PowerShell + Microsoft Edge + [rclone](https://rclone.org). 다른 OS 에서는 그 단계만 조용히 건너뛴다(에러 아님).
 - 보고서 HTML 은 **파일 하나로 완결**돼 있다(CSS·스크립트 내장, 외부 링크 0). 그냥 보내도 그대로 열린다.
-- 상시 컨텍스트 비용은 **약 500 토큰**이고, 스킬 본문은 실제로 부를 때만 읽힌다.
+- 상시 컨텍스트 비용은 **약 500 토큰**이고(실측 509), 스킬 본문은 실제로 부를 때만 읽힌다 — `claude plugin details chan-reports@chan-reports` 로 직접 볼 수 있다.
 - `/` 메뉴에 **스킬은 안 나열될 수 있다**(VSCode 확장). **목록에 없다는 것만으로 설치 실패로 판단하지 말 것** — 말로 불러서 되면 정상이다.
 
 ## 안 될 때
 
 | 증상 | 확인 |
 | --- | --- |
+| `claude: command not found` | CLI 가 PATH 에 없다 — **설치**의 PowerShell 세 줄을 쓴다 |
 | 말로 불러도 안 잡힌다 | **새 세션**을 열었는지 / VSCode 확장이면 `Developer: Reload Window` |
-| `claude plugin list` 에 없다 | 설치 두 줄을 다시 실행 |
-| 이름이 두 번 뜬다 | 플러그인과 수동 복사가 겹친 것 — 하나만 남긴다 |
+| `claude plugin list` 에 없다 | 설치 명령을 다시 실행 |
+| 이름이 두 번 뜬다 | 플러그인과 수동 복사가 겹친 것 — **설치** 마지막의 삭제 한 줄 |
 | `rclone 을 찾을 수 없음` | 설치 후 **터미널 재시작**(winget 이 추가한 PATH 는 새 세션부터 보인다) |
 | 드라이브에 팀 폴더가 안 보인다 | `rclone config` 에서 **Shared Drive? → y** 를 골랐는지(개인 드라이브로 붙으면 안 보인다) |
 | `PDF 생성 실패` | Edge 설치 확인 |
