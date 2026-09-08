@@ -14,19 +14,23 @@
 
 ## 설치
 
-터미널에 두 줄. 파일을 옮기거나 경로를 맞출 일이 없다.
+**제일 쉬운 방법 — Claude 에게 시킨다.** Claude Code 대화창에 이 한 줄을 붙이면 끝이다. 명령을 외울 것도, 경로를 맞출 것도 없다.
+
+```text
+https://github.com/chaniii999/chan-reports 이 저장소 README 대로 플러그인 설치해줘
+```
+
+직접 치는 게 편하면 터미널에 두 줄:
 
 ```bash
 claude plugin marketplace add https://github.com/chaniii999/chan-reports
 claude plugin install chan-reports@chan-reports
 ```
 
-⚠️ **`claude: command not found` 가 나오면** Claude Code 를 **VSCode 확장·데스크탑 앱으로만** 쓰는 상태다 — 그러면 `claude` 가 어느 터미널에도 없다(실측 2026-09-08). CLI 를 따로 깔 필요 없이 **확장이 번들한 바이너리**로 같은 설치를 한다. PowerShell 에 이 세 줄(경로를 직접 찾을 필요 없다):
+⚠️ **`claude: command not found` 가 나오면** Claude Code 를 **VSCode 확장·데스크탑 앱으로만** 쓰는 상태다 — 그러면 `claude` 가 어느 터미널에도 없다(실측 2026-09-08). CLI 를 깔 필요 없이 **확장이 번들한 바이너리**로 같은 일을 한다. PowerShell 에 한 줄:
 
 ```powershell
-$claude = (Get-ChildItem "$HOME\.vscode\extensions\anthropic.claude-code-*\resources\native-binary\claude.exe" | Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName
-& $claude plugin marketplace add https://github.com/chaniii999/chan-reports
-& $claude plugin install chan-reports@chan-reports
+$c=(Get-ChildItem "$HOME\.vscode\extensions\anthropic.claude-code-*\resources\native-binary\claude.exe"|Sort-Object LastWriteTime -Descending|Select-Object -First 1).FullName; & $c plugin marketplace add https://github.com/chaniii999/chan-reports; & $c plugin install chan-reports@chan-reports
 ```
 
 CLI 를 아예 PATH 에 두고 싶으면 `npm i -g @anthropic-ai/claude-code`.
@@ -80,7 +84,7 @@ Remove-Item -Recurse -Force "$HOME\.claude\skills\daily-report","$HOME\.claude\s
 
 | 증상 | 확인 |
 | --- | --- |
-| `claude: command not found` | CLI 가 PATH 에 없다 — **설치**의 PowerShell 세 줄을 쓴다 |
+| `claude: command not found` | CLI 가 PATH 에 없다 — **설치**의 PowerShell 한 줄, 또는 Claude 에게 시킨다 |
 | 말로 불러도 안 잡힌다 | **새 세션**을 열었는지 / VSCode 확장이면 `Developer: Reload Window` |
 | `claude plugin list` 에 없다 | 설치 명령을 다시 실행 |
 | 이름이 두 번 뜬다 | 플러그인과 수동 복사가 겹친 것 — **설치** 마지막의 삭제 한 줄 |
