@@ -1,6 +1,6 @@
 <!--
   일일 보고서 프레임 (재사용 골격) — daily-report 스킬의 산출 골격. 작성 규칙은 SKILL.md.
-  프레임 버전: v2.2.0  (변경 시 SKILL.md §버전 관리대로 bump + 세 곳 동기화 · 이력은 CHANGELOG.md)
+  프레임 버전: v2.2.1  (변경 시 SKILL.md §버전 관리대로 bump + 세 곳 동기화 · 이력은 CHANGELOG.md)
   ⚠️ 목차(TOC) 반응형 3단 — 임의 변경 금지 (v1.4.0 회귀 방지):
     ≥1260px: 좌측 플로팅 레일(본문 중앙) / 1024~1259px: 레일 좌측 고정 + 본문 우측 시프트(겹침 방지)
     / <1024px: 레일 숨김 + 상단 점프바. 아티팩트 뷰어 패널처럼 1260px 미만 환경에서도
@@ -470,16 +470,28 @@
     </div>
   </section>
 
-  <footer>{{ORG}} · {{YEAR}} · {{BRANCH}} · 보고서 템플릿 v2.2.0</footer>
+  <footer>{{ORG}} · {{YEAR}} · {{BRANCH}} · 보고서 템플릿 v2.2.1</footer>
 </div>
 
 <!-- 목차/점프바 스크립트 — 손대지 않음.
      (1) 인페이지 해시 링크 클릭 → scrollIntoView. 아티팩트는 allow-scripts 샌드박스 iframe(불투명 origin)이라
          네이티브 `#해시` 이동이 navigation 으로 차단돼 목차 클릭이 스크롤을 못 일으킨다(v1.4.1 수정). JS 스크롤로 우회.
          (핵심 정리 .sg-refs 의 [NN] 점프 칩도 함께 커버.)
-     (2) 스크롤 위치에 따라 현재 항목 하이라이트(IntersectionObserver). -->
+     (2) 스크롤 위치에 따라 현재 항목 하이라이트.
+     ⚠️ v2.2.1 에서 IntersectionObserver 를 **걷어냈다.** 종전 구현은 두 겹으로 틀렸다:
+       ① 감지 밴드가 `-18% 0px -72% 0px`(뷰포트 18~28%)인데 스크롤 앵커는 `scroll-margin-top: 70px`
+          이다. **창이 높을수록 둘의 간격이 벌어져** 짧은 절은 클릭 직후 통째로 밴드 **위로** 빠지고
+          다음 절이 잡혔다 — 사용자에겐 *"2번을 눌렀는데 목차엔 3번이 선택돼 보임"*.
+          실측(2026-09-14): 1440×1080 은 8항목 중 1건만 어긋났지만 **1600×2000 에서는 5건**이었다.
+       ② 여럿이 걸리면 `entries.forEach` 의 **마지막 entry** 가 이겼다 — 문서 순서가 아니라 콜백
+          전달 순서라 늘 아래 것이 이겼다.
+     ⇒ 밴드를 다시 튜닝하지 않고 **위치를 직접 계산**한다. 절이 열 개 남짓이라 비용이 무시되고,
+        "앵커선보다 위에서 시작한 마지막 절" 이라는 규칙은 **창 높이와 무관**하다. -->
 <script>
   (function () {
+    // 목차 클릭 직후에는 위치 계산을 멈춘다(아래 클릭 핸들러 주석 참조). 사용자가 직접 스크롤하면 켠다.
+    var spy = true;
+
     // (1) 인페이지 해시 링크 클릭 가로채기 → scrollIntoView (네이티브 해시 이동은 샌드박스에서 차단됨)
     document.addEventListener('click', function (e) {
       var a = e.target && e.target.closest ? e.target.closest('a[href^="#"]') : null;
@@ -492,22 +504,72 @@
       try { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
       catch (_) { el.scrollIntoView(); }
       try { if (window.history && history.replaceState) history.replaceState(null, '', '#' + id); } catch (_) {}
+      setActive(id);
+      // ★**누른 항목은 사용자가 스스로 스크롤할 때까지 유지한다.**
+      //   문서 **끝쪽 절들은 앵커선까지 올라올 수 없어**(더 스크롤할 자리가 없다) 위치 계산만으로는
+      //   서로 구분이 **원리적으로** 불가능하다 — 마지막 두 항목을 눌러도 화면이 같기 때문이다.
+      //   그 구간에서 유일하게 남은 정보가 "무엇을 눌렀나" 이므로 그것을 존중한다.
+      spy = false;
     });
 
-    // (2) 스크롤 위치 하이라이트
+    // 사용자가 직접 스크롤을 시작하면 다시 위치 계산으로 돌아간다(프로그램 스크롤과 구분).
+    ['wheel', 'touchmove', 'keydown'].forEach(function (t) {
+      window.addEventListener(t, function () { spy = true; }, { passive: true });
+    });
+
+    // (2) 스크롤 위치 하이라이트 — 위치 직접 계산
     var links = Array.prototype.slice.call(document.querySelectorAll('.toc a, .topnav a'));
-    if (!links.length || !('IntersectionObserver' in window)) return;
     var byId = {};
     links.forEach(function (a) { var id = a.getAttribute('href').slice(1); (byId[id] = byId[id] || []).push(a); });
-    var ids = Object.keys(byId).filter(function (id) { return document.getElementById(id); });
-    var io = new IntersectionObserver(function (entries) {
-      entries.forEach(function (e) {
-        if (e.isIntersecting) {
-          links.forEach(function (l) { l.classList.remove('active'); });
-          (byId[e.target.id] || []).forEach(function (l) { l.classList.add('active'); });
-        }
+    // ⚠️ **문서 순서**로 정렬한다 — `Object.keys` 순서(= 목차 등장 순서)에 기대면 목차와 본문
+    //    순서가 어긋나는 순간 조용히 틀린다.
+    var ids = Object.keys(byId)
+      .filter(function (id) { return document.getElementById(id); })
+      .sort(function (a, b) {
+        var ea = document.getElementById(a), eb = document.getElementById(b);
+        return (ea.compareDocumentPosition(eb) & Node.DOCUMENT_POSITION_FOLLOWING) ? -1 : 1;
       });
-    }, { rootMargin: '-18% 0px -72% 0px', threshold: 0 });
-    ids.forEach(function (id) { io.observe(document.getElementById(id)); });
+    if (!links.length || !ids.length) return;
+
+    function setActive(id) {
+      links.forEach(function (l) { l.classList.remove('active'); });
+      (byId[id] || []).forEach(function (l) { l.classList.add('active'); });
+    }
+
+    // 앵커선 = `scroll-margin-top`(70px) 바로 아래. 클릭하면 그 절의 top 이 70px 에 놓이므로
+    // 여유 10px 이면 그 절이 확실히 잡히고 다음 절은 안 잡힌다.
+    var ANCHOR = 80;
+
+    function current() {
+      // 문서 끝에 닿았으면 마지막 절 — 더 스크롤할 수 없어 **영영 활성이 안 되던** 항목을 살린다
+      // (종전에도 마지막 항목은 어떤 창 크기에서도 켜지지 않았다).
+      var doc = document.documentElement;
+      if (window.innerHeight + window.pageYOffset >= doc.scrollHeight - 2) return ids[ids.length - 1];
+      var pick = ids[0];
+      for (var i = 0; i < ids.length; i++) {
+        if (document.getElementById(ids[i]).getBoundingClientRect().top <= ANCHOR) pick = ids[i];
+        else break;
+      }
+      return pick;
+    }
+
+    // ⚠️ `window.requestAnimationFrame` 을 떼어 부르면 브라우저에 따라 Illegal invocation 이다 — 묶어 둔다.
+    var raf = window.requestAnimationFrame
+      ? window.requestAnimationFrame.bind(window)
+      : function (fn) { return window.setTimeout(fn, 16); };
+
+    var queued = false;
+    function sync() {
+      queued = false;
+      if (spy) setActive(current());
+    }
+    function onScroll() {
+      if (queued) return;
+      queued = true;
+      raf(sync);
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll, { passive: true });
+    sync();
   })();
 </script>
