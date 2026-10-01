@@ -1,6 +1,6 @@
 <!--
   일일 보고서 프레임 (재사용 골격) — daily-report 스킬의 산출 골격. 작성 규칙은 SKILL.md.
-  프레임 버전: v2.2.1  (변경 시 SKILL.md §버전 관리대로 bump + 세 곳 동기화 · 이력은 CHANGELOG.md)
+  프레임 버전: v2.5.0  (변경 시 SKILL.md §버전 관리대로 bump + 세 곳 동기화 · 이력은 CHANGELOG.md)
   ⚠️ 목차(TOC) 반응형 3단 — 임의 변경 금지 (v1.4.0 회귀 방지):
     ≥1260px: 좌측 플로팅 레일(본문 중앙) / 1024~1259px: 레일 좌측 고정 + 본문 우측 시프트(겹침 방지)
     / <1024px: 레일 숨김 + 상단 점프바. 아티팩트 뷰어 패널처럼 1260px 미만 환경에서도
@@ -153,6 +153,8 @@
   .toc .tg { font-family: var(--mono); font-size: 9.5px; font-weight: 700; letter-spacing: .04em; flex: none; }
   .toc .tg.bug { color: var(--bug); } .toc .tg.fix { color: var(--fix); } .toc .tg.feat { color: var(--feat); } .toc .tg.chore { color: var(--chore); } .toc .tg.docs { color: var(--docs); }
   .toc .txt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* 패키지 구역 구분선 — 목차에서 구역 이름을 먼저 보이고 그 아래 카드를 묶는다(v2.5.0). 번호 없음. */
+  .toc .toc-sec { margin-top: 10px; padding: 8px 0 3px 11px; border-top: 1px solid var(--line-soft); font-family: var(--mono); font-size: 10.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-faint); }
   /* 중간 폭(1024~1259px): 좌측 플로팅 유지 — 레일을 왼쪽에 고정하고 본문을 우측으로 밀어 겹침 방지
      (아티팩트 뷰어 패널 등 1260px 미만 환경에서 목차가 사라지던 문제 보완, v1.4.0) */
   @media (max-width: 1260px) {
@@ -299,6 +301,18 @@
   .item b { color: var(--ink); font-weight: 600; }
   .item .files { font-family: var(--mono); font-size: 13.5px; color: var(--ink-faint); }
   .item.muted { color: var(--ink-faint); }
+  /* 패키지 이름 — **원 이름 그대로**(`packages/selab-…`). 한글 풀이는 보조로 뒤에 붙인다.
+     줄인 이름만 적으면 읽는 사람이 저장소에서 그 이름을 못 찾는다(v2.3.0). */
+  .pkg { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--accent);
+         background: var(--accent-soft); border: 1px solid var(--accent-border);
+         border-radius: 5px; padding: 1.5px 7px; white-space: nowrap; }
+  .pkg-ko { color: var(--ink-soft); font-size: 14.5px; margin-left: 7px; }
+  .item.muted .pkg { color: var(--ink-faint); background: var(--cause-bg); border-color: var(--line); }
+  /* 작업 카드의 패키지 줄 — 제목 바로 아래. 그 카드가 어느 패키지를 고쳤는지 카드 안에서 답한다. */
+  .work-pkgs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+               margin: -8px 0 16px; padding-left: 40px; }
+  .work-pkgs .k { font-size: 12.5px; color: var(--ink-faint); letter-spacing: 0.02em; margin-right: 2px; }
+  @media (max-width: 640px) { .work-pkgs { padding-left: 0; } }
   .feedback { display: flex; flex-direction: column; gap: 10px; }
   .fb { display: flex; align-items: baseline; gap: 11px; font-size: 15.5px; color: var(--ink-soft); }
   .fb .mk { flex: none; font-family: var(--mono); font-weight: 700; align-self: center; }
@@ -336,35 +350,41 @@
   }
 </style>
 
-<!-- 목차: 작업 1건당 li 1개(번호·TAG·짧은제목) + 영향(04)·검증(05). 번호는 본문과 1:1. -->
+<!-- 목차: 작업 1건당 li 1개 + 영향·검증. 번호는 본문과 1:1.
+     ★ .txt 는 카드 <h3> 와 **글자 하나 다르지 않게 같다**(v2.4.1). 목차용 짧은 제목을 따로 만들지 않는다 —
+       카드 제목 자체를 16자 안으로 쓴다. 발행 전 check-report.mjs 가 대조한다. -->
 <nav class="toc" aria-label="목차">
   <p class="toc-label">목차</p>
   <ol>
     <li><a href="#summary"><span class="no">★</span><span class="txt">핵심 정리</span></a></li>
     <li><a href="#perf"><span class="no">⚡</span><span class="txt">개선 결과</span></a></li>
-    <li><a href="#w1"><span class="no">01</span><span class="tg bug">{{TAG}}</span><span class="txt">{{짧은 제목}}</span></a></li>
-    <!-- … 작업 수만큼 li 복제 (w2, w3 …) … -->
-    <li><a href="#impact"><span class="no">{{N4}}</span><span class="txt">영향 · 부작용</span></a></li>
-    <li><a href="#verify"><span class="no">{{N5}}</span><span class="txt">검증</span></a></li>
+    <!-- ★ 패키지 구역의 첫 카드 앞마다 구분선 한 줄(v2.5.0). 이름 = 핵심 정리 분류 = 카드 .section-break 이름. 번호 없음. -->
+    <li class="toc-sec">{{구역}}</li>
+    <li><a href="#w1"><span class="no">01</span><span class="tg bug">{{TAG}}</span><span class="txt">{{카드 제목}}</span></a></li>
+    <!-- … 작업 수만큼 li 복제 (w2, w3 …). 구역이 바뀌는 자리에 .toc-sec … -->
+    <li><a href="#impact"><span class="no">{{N+1}}</span><span class="txt">영향 · 부작용</span></a></li>
+    <li><a href="#verify"><span class="no">{{N+2}}</span><span class="txt">검증</span></a></li>
   </ol>
 </nav>
 
-<!-- 좁은 화면(<1260px) 점프 바: 목차와 동일 항목 -->
+<!-- 좁은 화면(<1024px) 점프 바: 목차와 **같은 항목 · 같은 글자** -->
 <nav class="topnav" aria-label="목차">
-  <a href="#summary"><span class="n">★</span>핵심</a>
+  <a href="#summary"><span class="n">★</span>핵심 정리</a>
   <a href="#perf"><span class="n">⚡</span>개선 결과</a>
-  <a href="#w1"><span class="n">01</span>{{짧은 제목}}</a>
+  <a href="#w1"><span class="n">01</span>{{카드 제목}}</a>
   <!-- … 작업 수만큼 복제 … -->
-  <a href="#impact"><span class="n">{{N4}}</span>영향·부작용</a>
-  <a href="#verify"><span class="n">{{N5}}</span>검증</a>
+  <a href="#impact"><span class="n">{{N+1}}</span>영향 · 부작용</a>
+  <a href="#verify"><span class="n">{{N+2}}</span>검증</a>
 </nav>
 
 <div class="wrap">
   <header>
     <p class="eyebrow">Daily Report · {{PROJECT}}</p>
+    <!-- 제목은 **그날의 요지 한 문장**. 쉼표로 작업을 나열하지 않는다(나열은 핵심 정리의 몫). -->
     <h1>{{TITLE}}</h1>
     <div class="meta">
       <span><span class="k">날짜</span><b>{{DATE}}</b></span>
+      <!-- 브랜치는 **대표 3개 + 외 N개**(예: a · b · c 외 20개). 푸터에도 같은 글. -->
       <span><span class="k">브랜치</span><b>{{BRANCH}}</b></span>
       <span><span class="k">범위</span><b>{{SCOPE}}</b></span>
       <span><span class="k">작성자</span><b>{{AUTHOR}}</b></span>
@@ -377,15 +397,16 @@
     </div>
   </header>
 
-  <!-- 핵심 정리: 그날 작업을 종류(도메인)별로 2~5개 그룹으로 병합한 한눈 요약. 그룹당 한 줄(핵심 성과)
-       + 관련 카드 번호(클릭 시 해당 카드로 점프). 헤더(집계 칩) 바로 아래, 작업 카드 위에 둔다. -->
+  <!-- 핵심 정리: 2~5개 분류, 분류당 한 줄 + 카드 번호.
+       ★ 분류 이름 = 아래 카드 구역(.section-break) 이름 = 목차 구분선(.toc-sec), **같은 순서·같은 글자**(v2.5.0).
+         분류 체계가 둘이면 읽는 사람이 둘을 맞춰 봐야 한다. 참조 번호는 오름차순. -->
   <section class="summary" id="summary" aria-label="핵심 정리">
     <h2><span class="sm-mark">★</span>핵심 정리</h2>
     <div class="sg">
-      <span class="sg-cat">{{분류}}</span>
-      <div class="sg-text">{{종류별 병합 한 줄 요약}} <span class="sg-refs"><a href="#w1">01</a><a href="#w2">02</a></span></div>
+      <span class="sg-cat">{{구역}}</span>
+      <div class="sg-text">{{분류의 성과 한 줄}} <span class="sg-refs"><a href="#w1">01</a><a href="#w2">02</a></span></div>
     </div>
-    <!-- … 분류 수만큼 .sg 복제 (보통 2~5개 그룹) … -->
+    <!-- … 분류 수만큼 .sg 복제 (2~5개) … -->
   </section>
 
   <!-- 개선 결과 (v1.11.0) — **성능·수치 개선이 있는 날에만** 둔다. 없으면 이 section 통째 삭제.
@@ -410,67 +431,91 @@
           <span class="perf-bv a">{{이후}}</span>
         </div>
       </div>
-      <!-- … 지표 수만큼 .perf-card 복제 (보통 3~6개) … -->
+      <!-- … 지표 수만큼 .perf-card 복제 (보통 1~4개) … -->
     </div>
     <p class="perf-note">{{측정 조건 한 줄 — 없으면 이 줄 삭제}}</p>
   </section>
 
-  <!-- 작업 카드: 1건당 article 1개. id=w1,w2,… / wnum·tag·TOC 번호 일치. 검증된 작업만 .verified 배지. -->
+  <!-- 작업 카드: 1건당 article 1개. id=w1,w2,… / wnum·tag·TOC 번호 일치. 검증된 작업만 .verified 배지.
+       ★ 카드는 **개념 단위 10장 이하**(비슷한 개념은 한 카드). 구역(.section-break)은 **패키지** — 핵심 정리 분류·목차 구분선과 1:1, 같은 순서.
+       ★ 원인·개선 각 4개 이내(합친 개념당 1개), 불릿 60자 이내, <b> 는 수치에만 불릿당 1개. 제목은 결과형 16자 이내. -->
   <div class="cards">
+    <div class="section-break"><span>{{구역}}</span></div>
+
     <article class="work" id="w1">
       <div class="work-head">
         <span class="wnum">01</span>
         <span class="tag bug">{{TAG}}</span>
-        <h3>{{현상 제목}}</h3>
+        <h3>{{카드 제목}}</h3>
         <span class="verified">✓ 사용자 확인</span><!-- 미검증이면 이 줄 삭제 -->
+      </div>
+      <!-- 이 카드가 고친 패키지 — **원 이름 그대로**. 여러 개면 칩을 나열한다.
+           패키지가 아닌 작업(조사·집계 등)이면 이 div 를 통째로 삭제한다. -->
+      <div class="work-pkgs">
+        <span class="k">패키지</span>
+        <code class="pkg">{{packages/selab-…}}</code>
       </div>
       <div class="rows">
         <div class="row cause"><span class="label">원인</span><div class="val"><ul><li>{{원인 불릿 1}}</li><li>{{원인 불릿 2}}</li></ul></div></div>
         <div class="row result"><span class="label"><span class="arrow">→</span> 개선 결과</span><div class="val"><ul><li>{{개선 결과 불릿 1}}</li><li>{{개선 결과 불릿 2}}</li></ul></div></div>
       </div>
     </article>
-    <!-- … 작업 수만큼 article 복제 … -->
+    <!-- … 작업 수만큼 article 복제. 패키지 구역이 바뀌는 자리에 .section-break … -->
   </div>
 
   <div class="section-break"><span>검토 · 검증</span></div>
 
-  <!-- 강제 규칙: 이 섹션은 절대 삭제하지 않는다. 부작용이 없어도 종합란에 '알려진 부작용 없음'을 필히 명시. -->
+  <!-- 강제 규칙: 이 섹션은 절대 삭제하지 않는다. 부작용이 없어도 종합란에 '알려진 부작용 없음'을 필히 명시.
+       ★ 순서 = 후속 확인(△) → 부작용 없음 근거(✓, 3줄 이내) → 수정한 패키지(v2.4.1).
+         읽는 사람이 할 일이 △ 에 있으므로 그것을 먼저 둔다. △ 줄 끝에 해당 카드 번호. -->
   <section class="panel" id="impact">
-    <h2><span class="pnum">{{N4}}</span>영향 범위 · 부작용 점검</h2>
+    <h2><span class="pnum">{{N+1}}</span>영향 · 부작용</h2>
+    <div class="block">
+      <div class="label">후속 확인</div>
+      <div class="feedback">
+        <div class="fb watch"><span class="mk">△</span><span>{{확인이 남은 것}} ({{NN}})</span></div>
+        <!-- 없으면: <div class="fb ok"><span class="mk">✓</span><span>없음</span></div> -->
+      </div>
+    </div>
+    <div class="block">
+      <div class="label">부작용 없음 근거</div>
+      <div class="feedback">
+        <div class="fb ok"><span class="mk">✓</span><span>{{영향 범위가 좁다는 근거}}</span></div>
+      </div>
+    </div>
     <div class="block">
       <div class="label">수정한 패키지</div>
       <div class="checklist">
-        <div class="item"><span class="box on">✓</span><span><b>{{패키지}}</b> ({{계층}}) — <span class="files">{{파일들}}</span></span></div>
-        <div class="item muted"><span class="box off">–</span><span>{{미변경 영역}} — 변경 없음</span></div>
+        <!-- ⚠️ 패키지는 **저장소의 원 이름 그대로** 적는다 — `packages/selab-diagram-editor`.
+             한글 풀이는 `.pkg-ko` 로 **뒤에 덧붙인다**. 뒤에는 무엇을 바꿨나 대신 **카드 번호**를 적는다.
+             카드들의 .work-pkgs 합집합과 같아야 한다. -->
+        <div class="item"><span class="box on">✓</span><span><code class="pkg">{{packages/selab-…}}</code><span class="pkg-ko">{{한글 풀이}}</span> — {{01 · 02}}</span></div>
+        <div class="item muted"><span class="box off">–</span><span>그 외 패키지 — 변경 없음</span></div>
       </div>
     </div>
-    <div class="block">
-      <div class="label">부작용 점검</div>
-      <div class="feedback">
-        <div class="fb ok"><span class="mk">✓</span><span>{{영향 범위가 좁다는 근거}}</span></div>
-        <div class="fb watch"><span class="mk">△</span><span>{{주의/잠재 영향 — 있으면, 없으면 줄 삭제}}</span></div>
-      </div>
-      <!-- 부작용 없으면 아래 종합란을 그대로 둔다(섹션 삭제 금지). -->
-      <div class="verdict"><b>종합:</b> 알려진 부작용 없음</div>
-    </div>
+    <!-- 부작용 없으면 아래 종합란을 그대로 둔다(섹션 삭제 금지). -->
+    <div class="verdict"><b>종합:</b> 알려진 부작용 없음</div>
   </section>
 
+  <!-- ★ 검증은 **대표 3~6개**. 같은 검사는 **최종값 한 번만**(여러 시점 값을 늘어놓으면 모순처럼 읽힌다).
+       직접 돌린 값과 옮겨 온 값이 섞이면 .note 로 출처를 밝힌다. -->
   <section class="panel" id="verify">
-    <h2><span class="pnum">{{N5}}</span>검증</h2>
+    <h2><span class="pnum">{{N+2}}</span>검증</h2>
     <div class="block">
-      <div class="label">자동 게이트</div>
-      <div class="gates"><span>{{게이트명}} <b>{{pass/fail}}</b></span></div>
+      <div class="label">자동 검사</div>
+      <div class="gates"><span>{{무엇을 검사했나 — 한국어}} <b>{{pass/total}}</b></span></div>
+      <p class="note">{{수치 출처 — 한 출처면 줄 삭제}}</p>
     </div>
     <div class="block">
-      <div class="label">사용자 수동 검증 (IDE)</div>
+      <div class="label">사용자 수동 검증</div>
       <div class="checks">
-        <div class="check"><span class="mark">✓</span><span><b>{{항목}}</b> — {{기대 결과}}</span></div>
+        <div class="check"><span class="mark">✓</span><span><b>{{카드 번호}}</b> — {{어떻게 확인했나}}</span></div>
       </div>
       <p class="note">{{미검증/후속 메모 — 없으면 줄 삭제}}</p>
     </div>
   </section>
 
-  <footer>{{ORG}} · {{YEAR}} · {{BRANCH}} · 보고서 템플릿 v2.2.1</footer>
+  <footer>{{ORG}} · {{YEAR}} · {{BRANCH}} · 보고서 템플릿 v2.5.0</footer>
 </div>
 
 <!-- 목차/점프바 스크립트 — 손대지 않음.

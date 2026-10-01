@@ -103,7 +103,7 @@ Remove-Item -Recurse -Force "$HOME\.claude\skills\daily-report","$HOME\.claude\s
 ```text
 chan-reports/
   .claude-plugin/plugin.json · marketplace.json   ← 플러그인 설치용
-  skills/daily-report/    SKILL.md · frame.html · CHANGELOG.md · publish.ps1
+  skills/daily-report/    SKILL.md · frame.html · CHANGELOG.md · publish.ps1 · check-report.mjs ← 발행 전 구조 검사
   skills/weekly-report/   SKILL.md · frame.html · CHANGELOG.md
   commands/               daily-report.md · weekly-report.md   ← / 메뉴용 얇은 래퍼
 ```
