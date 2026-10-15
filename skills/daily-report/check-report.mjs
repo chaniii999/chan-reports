@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// 일일보고서 발행 전 검사 (v2.4.1 · v2.5.0 확장) — SKILL.md §15 가 정본.
+// 일일보고서 발행 전 검사 (v2.4.1 · v2.5.0 확장 · v2.7.0 C15) — SKILL.md §15 가 정본.
 // 사용: node check-report.mjs <보고서.html>
 // 종료코드: 0 통과 · 1 규칙 위반 · 2 입력 오류.
 // ⚠️ 각 검사는 **몇 개를 봤는지**를 함께 찍는다 — 0개를 보고 통과한 것과 구분하려고.
@@ -232,6 +232,24 @@ if (cards.length < 3) warns.push(`C3: 카드 ${cards.length}장 — 작업이 �
   if (m[2] && shown.length !== 3) bad.push(`"외 N개" 인데 앞에 ${shown.length}개만 있다(3개여야 한다)`);
   if (meta && !foot.includes(meta)) bad.push('푸터의 브랜치 표기가 메타와 다르다');
   check('C14 브랜치 3개 + 외 N개', 1, bad);
+}
+
+// ── C15 로컬 작업 서술 금지 (v2.7.0) ───────────────────────────────
+// 보고서에는 저장소에 반영되는 작업(PR 에 담기는 것)만 싣는다. 내 PC 안에서만 일어난 작업 —
+// 빌드·호스트 재실행·머지 후 정리·세션/룰/훅 손질·조사 — 은 카드는 물론 영향 패널·검증 패널·범위 메타에도 쓰지 않는다.
+// 어휘 목록이 좁은 것은 의도다 — 제품 카드가 「빌드」 같은 일반어를 쓰는 것까지 막지 않으려고.
+{
+  const LOCAL = [
+    [/호스트(를)? ?(다시 )?(띄|재실행|종료)/, '호스트 조작'], [/Reload Window/i, 'Reload Window'], [/워크트리/, '워크트리'],
+    [/머지 후 정리|after-merge/, '머지 후 정리'], [/로컬 (브랜치|룰|훅|빌드)/, '로컬 작업'], [/빌드(를)? ?(생략|건너|누락)/, '빌드 생략·누락'],
+    [/build-with-host|launch-host|세션 세팅/, '로컬 스크립트'], [/\.claude\b/, '.claude 자산'],
+  ]; // ⚠️ 「잠금」은 넣지 않는다 — 배치 잠금 같은 제품 기능과 겹친다(2026-10-15 실측 오탐)
+  const scopes = [['제목', h1], ['범위 메타', text((html.match(/<span class="k">범위<\/span><b>([\s\S]*?)<\/b>/) || [, ''])[1])],
+    ...groups.map((g) => [`핵심 정리 ${g.cat}`, g.text]), ...cards.map((c) => [`카드 ${c.num}`, c.text]),
+    ['영향 패널', text(impactHtml)], ['검증 패널', text(verifyHtml)]];
+  const bad = [];
+  for (const [where, t] of scopes) for (const [re, label] of LOCAL) { const m = t.match(re); if (m) bad.push(`${where} "${m[0]}" (${label}) — 로컬에서만 일어난 작업은 싣지 않는다`); }
+  check('C15 로컬 작업 서술 없음', scopes.length, bad);
 }
 
 console.log('');
