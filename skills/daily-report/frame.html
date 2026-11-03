@@ -1,6 +1,6 @@
 <!--
   일일 보고서 프레임 (재사용 골격) — daily-report 스킬의 산출 골격. 작성 규칙은 SKILL.md.
-  프레임 버전: v2.7.0  (변경 시 SKILL.md §버전 관리대로 bump + 세 곳 동기화 · 이력은 CHANGELOG.md)
+  프레임 버전: v2.7.1  (변경 시 SKILL.md §버전 관리대로 bump + 세 곳 동기화 · 이력은 CHANGELOG.md)
   ⚠️ 목차(TOC) 반응형 3단 — 임의 변경 금지 (v1.4.0 회귀 방지):
     ≥1260px: 좌측 플로팅 레일(본문 중앙) / 1024~1259px: 레일 좌측 고정 + 본문 우측 시프트(겹침 방지)
     / <1024px: 레일 숨김 + 상단 점프바. 아티팩트 뷰어 패널처럼 1260px 미만 환경에서도
@@ -449,7 +449,9 @@
         <h3>{{카드 제목}}</h3>
         <span class="verified">✓ 사용자 확인</span><!-- 미검증이면 이 줄 삭제 -->
       </div>
-      <!-- 이 카드가 고친 패키지 — **원 이름 그대로**. 여러 개면 칩을 나열한다.
+      <!-- 이 카드가 고친 패키지 — **원 이름 그대로**. 여러 개면 칩을 나열하되 **칩 사이에 `<span class="k">·</span>`** 를 둔다.
+           ⚠️ 이 줄은 flex 상자라 칩 사이 공백이 렌더에서 사라진다 — 구분자가 없으면 화면을 복사하거나 글자를 뽑을 때
+           두 패키지 이름이 한 덩어리로 붙는다(v2.7.1, 검사 C9b). 순서: 칩 → 가운뎃점 span → 칩.
            패키지가 아닌 작업(조사·집계 등)이면 이 div 를 통째로 삭제한다. -->
       <div class="work-pkgs">
         <span class="k">패키지</span>
@@ -488,8 +490,9 @@
       <div class="checklist">
         <!-- ⚠️ 패키지는 **저장소의 원 이름 그대로** 적는다 — `packages/selab-diagram-editor`.
              한글 풀이는 `.pkg-ko` 로 **뒤에 덧붙인다**. 뒤에는 무엇을 바꿨나 대신 **카드 번호**를 적는다.
-             카드들의 .work-pkgs 합집합과 같아야 한다. -->
-        <div class="item"><span class="box on">✓</span><span><code class="pkg">{{packages/selab-…}}</code><span class="pkg-ko">{{한글 풀이}}</span> — {{01 · 02}}</span></div>
+             카드들의 .work-pkgs 합집합과 같아야 한다.
+             `</code>` 와 `<span class="pkg-ko">` 사이에 **공백 한 칸**을 둔다 — 없으면 복사할 때 `…editor블록 에디터` 로 붙는다(v2.7.1, C9b). -->
+        <div class="item"><span class="box on">✓</span><span><code class="pkg">{{packages/selab-…}}</code> <span class="pkg-ko">{{한글 풀이}}</span> — {{01 · 02}}</span></div>
         <div class="item muted"><span class="box off">–</span><span>그 외 패키지 — 변경 없음</span></div>
       </div>
     </div>
@@ -515,7 +518,7 @@
     </div>
   </section>
 
-  <footer>{{ORG}} · {{YEAR}} · {{BRANCH}} · 보고서 템플릿 v2.7.0</footer>
+  <footer>{{ORG}} · {{YEAR}} · {{BRANCH}} · 보고서 템플릿 v2.7.1</footer>
 </div>
 
 <!-- 목차/점프바 스크립트 — 손대지 않음.

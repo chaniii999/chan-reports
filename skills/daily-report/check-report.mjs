@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// 일일보고서 발행 전 검사 (v2.4.1 · v2.5.0 확장 · v2.7.0 C15) — SKILL.md §15 가 정본.
+// 일일보고서 발행 전 검사 (v2.4.1 · v2.5.0 확장 · v2.7.0 C15 · v2.7.1 C9b) — SKILL.md §15 가 정본.
 // 사용: node check-report.mjs <보고서.html>
 // 종료코드: 0 통과 · 1 규칙 위반 · 2 입력 오류.
 // ⚠️ 각 검사는 **몇 개를 봤는지**를 함께 찍는다 — 0개를 보고 통과한 것과 구분하려고.
@@ -176,6 +176,26 @@ if (cards.length < 3) warns.push(`C3: 카드 ${cards.length}장 — 작업이 �
   const bad = [...cardSet].filter((p) => !impSet.has(p)).map((p) => `영향 패널에 없음 ${p}`)
     .concat([...impSet].filter((p) => !cardSet.has(p)).map((p) => `어느 카드에도 없음 ${p}`));
   check('C9 패키지 카드 = 영향 패널', cardSet.size + impSet.size, bad);
+}
+
+// ── C9b 패키지 칩 구분자 (v2.7.1) ────────────────────────────────
+// `.work-pkgs` 는 flex 라 칩 사이 공백이 렌더에서 사라진다 — 구분자가 없으면 복사·글자 추출 때 이름이 붙는다.
+// 영향 패널의 `</code><span class="pkg-ko">` 도 붙여 쓰면 `…editor블록 에디터` 가 된다. 주석 안 예시는 보지 않는다.
+{
+  const noComments = (s) => s.replace(/<!--[\s\S]*?-->/g, '');
+  const bad = []; let seen = 0;
+  for (const a of noComments(cardsHtml).matchAll(/<article class="work" id="(w\d+)">([\s\S]*?)<\/article>/g)) {
+    const pk = /<div class="work-pkgs">([\s\S]*?)<\/div>/.exec(a[2]);
+    if (!pk) continue;
+    seen += Math.max(0, (pk[1].match(/<code class="pkg">/g) || []).length - 1);
+    const glued = (pk[1].match(/<\/code>\s*<code class="pkg">/g) || []).length;
+    if (glued) bad.push(`${a[1]} 칩 ${glued}곳이 구분자 없이 붙음 — 사이에 <span class="k">·</span>`);
+  }
+  for (const m of noComments(impactHtml).matchAll(/<\/code>(\s*)<span class="pkg-ko">/g)) {
+    seen += 1;
+    if (!m[1]) bad.push('영향 패널 패키지 이름과 한글 풀이가 공백 없이 붙음');
+  }
+  check('C9b 패키지 칩 구분자', seen, bad);
 }
 
 // ── C10 영향 패널: 후속 확인이 먼저, 근거 ✓ 3줄 이내 ───────────
